@@ -17,6 +17,10 @@ impl BitwardenFolder {
         let folder_uuid = Uuid::new_v4();
         Self { name, id: folder_uuid }
     }
+
+    pub fn get_id(&self) -> Uuid {
+        self.id.clone()
+    }
 }
 
 #[cfg(test)]

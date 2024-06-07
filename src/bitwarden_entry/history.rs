@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct PasswordHistoryEntry {
     lastUsedDate: DateTime<Utc>,
     password: String,
