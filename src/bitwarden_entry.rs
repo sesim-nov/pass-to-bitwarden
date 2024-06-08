@@ -20,7 +20,7 @@ pub struct BitwardenEntry {
     reprompt: u8,
     notes: String,
     collectionIds: Option<Vec<Uuid>>,
-    login: login::Login 
+    pub(crate) login: login::Login 
 }
 
 impl BitwardenEntry {

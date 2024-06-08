@@ -4,11 +4,11 @@ use uuid::Uuid;
 
 #[derive(Serialize, Debug)]
 pub struct Login {
-    uris: Vec<Uri>,
-    username: String,
-    password: String,
-    totp: String, 
-    collectionIds: Option<Vec<Uuid>>,
+    pub(crate) uris: Vec<Uri>,
+    pub(crate) username: String,
+    pub(crate) password: String,
+    pub(crate) totp: String, 
+    pub(crate) collectionIds: Option<Vec<Uuid>>,
 }
 
 impl Login{

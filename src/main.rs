@@ -19,6 +19,7 @@
 use regex::Regex;
 use regex_static;
 use std::io::{BufRead, BufReader};
+use uuid::Uuid;
 
 mod bit_folder;
 mod bitwarden_json;
@@ -26,7 +27,7 @@ mod bitwarden_entry;
 
 fn main() {
     let test_entry = "blahpassword\nusername:Billy\nExtra Text!!!!!";
-    process_entry(test_entry);
+    process_entry("test_name", Uuid::nil(), test_entry);
     bit_folder::test_mod();
 }
 
@@ -44,7 +45,7 @@ fn get_username(input: &str) -> Option<String> {
     Some(String::from(modified_string.split('\n').next()?))
 }
 
-fn process_entry(inp: &str) {
+fn process_entry(name: &str, folder_id: Uuid, inp: &str) -> bitwarden_entry::BitwardenEntry {
     let buf = BufReader::new(inp.as_bytes());
     let mut line_buf = buf.lines();
     let pass = line_buf
@@ -62,10 +63,12 @@ fn process_entry(inp: &str) {
         None => String::from("No TOTP"),
         Some(x) => x,
     };
-    println!("Username: {}", username);
-    println!("Pass: {}", pass);
-    println!("TOTP: {:?}", totp);
-    println!("Remainder: {}", line_buf.fold(String::new(), |s, l| s + &l.expect("Got non-string in remainder print") + "\n"));
+    bitwarden_entry::BitwardenEntry::from_pass(
+        String::from(name), 
+        username, 
+        pass, 
+        totp, 
+        folder_id)
 }
 
 #[cfg(test)]
@@ -88,6 +91,44 @@ mod tests {
         assert_eq!(get_username(hay), Some(String::from(" Bob Dylan")));
         assert_eq!(get_username(hay2), Some(String::from(" Bob Dylan")));
         assert_eq!(get_username(stack), None);
+    }
+
+    #[test]
+    fn conversion_workflow_works() {
+        let folder = bit_folder::BitwardenFolder::new("Test Folder 001");
+        let folder_id = folder.get_id();
+        let test_name = "TestName";
+        let test_entry = String::from("testpass\nUsername:Test Username\ntotp://test-totp\nextra_notes");
+        let test_converted: bitwarden_entry::BitwardenEntry = process_entry(test_name, folder_id, &test_entry);
+        assert_eq!(test_converted.login.username, "Test Username");
+    }
+
+    struct SimulatedEntry{
+        pub name: String,
+        pub entry: String,
+    }
+
+    #[test]
+    fn full_bitwarden_json_works() {
+        //Arrange
+        let entry_1 = SimulatedEntry{
+            name: String::from("Test 1"),
+            entry: String::from("testpass01#@$\nUsername:Test Uaer\n"),
+        };
+        let entry_2 = SimulatedEntry{
+            name: String::from("Test 2"),
+            entry: String::from("testpw02*(&$#$%#$%&^**%@##$!#@$@$^%%&\nUsername:Derp\ntotp://derpyderp"),
+        };
+        let entries = vec![entry_1, entry_2];
+        let folder = bit_folder::BitwardenFolder::new("folder_name");
+        let folder_id = folder.get_id();
+
+        //Act
+        let converted_entries: Vec<bitwarden_entry::BitwardenEntry> = entries.into_iter()
+            .map(|x| {
+                process_entry(&x.name, folder_id, &x.entry)
+            }).collect();
+        let json = bitwarden_json::BitwardenJson::with_entries(vec![folder], converted_entries);
     }
 }
 
