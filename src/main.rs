@@ -18,21 +18,56 @@
 
 use regex::Regex;
 use regex_static;
-use std::io::{BufRead, BufReader};
+use serde::Serialize;
+use std::io::{BufRead, BufReader, Read};
+use std::fs::{File};
 use uuid::Uuid;
+use walkdir::WalkDir;
 
 mod bit_folder;
 mod bitwarden_json;
 mod bitwarden_entry;
 
 fn main() {
-    let test_entry = "blahpassword\nusername:Billy\nExtra Text!!!!!";
-    process_entry("test_name", Uuid::nil(), test_entry);
-    bit_folder::test_mod();
+    let fsroot = std::env::args().nth(1).expect("Expected arg for root of pass dir.");
+    let mut dir = WalkDir::new(fsroot).into_iter();
+    let folder_name = dir
+        .next()
+        .unwrap()
+        .unwrap()
+        .into_path()
+        .to_str()
+        .unwrap()
+        .split("/")
+        .last()
+        .unwrap()
+        .to_string();
+    //println!("Folder name: {}", folder_name);
+    let folder = bit_folder::BitwardenFolder::new(&folder_name);
+    let folder_id = folder.get_id();
+    let folders = vec![folder];
+
+    let mut items = Vec::new();
+    for item in dir{
+        let item = item.unwrap();
+        if item.file_type().is_file() {
+            let entry_name = String::from(item.file_name().to_str().unwrap());
+            let mut buf = String::new();
+            //println!("{:?}", entry_name);
+            let mut file = File::open(item.path()).expect("Error opening file");
+            let fstring = file.read_to_string(&mut buf);
+            let new_entry = process_entry(&entry_name, folder_id, &buf);
+            items.push(new_entry);
+        }
+    }
+
+    let json = bitwarden_json::BitwardenJson::with_entries(folders, items);
+    let pretty_text = serde_json::to_string_pretty(&json).unwrap();
+    println!("{}", pretty_text)
 }
 
 fn get_totp(input: &str) -> Option<String> {
-    let reg: &Regex = regex_static::static_regex!("totp://");
+    let reg: &Regex = regex_static::static_regex!("(totp|otpauth)://");
     let needle = reg.find(input)?.start();
     let modified_string: &str = &input[needle..];
     Some(String::from(modified_string.split_whitespace().next()?))
@@ -60,15 +95,18 @@ fn process_entry(name: &str, folder_id: Uuid, inp: &str) -> bitwarden_entry::Bit
         },
     };
     let totp = match get_totp(inp){
-        None => String::from("No TOTP"),
+        None => String::from(""),
         Some(x) => x,
     };
+    let notes: String = line_buf.map(|c| c.unwrap()).collect::<Vec<String>>().join("\n");
     bitwarden_entry::BitwardenEntry::from_pass(
         String::from(name), 
         username, 
         pass, 
         totp, 
-        folder_id)
+        folder_id,
+        notes
+    )
 }
 
 #[cfg(test)]

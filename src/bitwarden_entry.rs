@@ -24,8 +24,8 @@ pub struct BitwardenEntry {
 }
 
 impl BitwardenEntry {
-    pub fn from_pass(name: String, username: String, password: String, totp: String, folderId: Uuid) -> Self {
-        Self { name, folderId, login: login::Login::from_pass(username, password, totp), .. Default::default() }
+    pub fn from_pass(name: String, username: String, password: String, totp: String, folderId: Uuid, notes: String) -> Self {
+        Self { name, folderId, login: login::Login::from_pass(username, password, totp), notes, .. Default::default() }
     }
 }
 

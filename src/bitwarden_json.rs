@@ -31,7 +31,9 @@ mod tests {
             String::from("bob"),
             String::from("abc123"),
             String::from(""),
-            jerry_id)];
+            jerry_id,
+            String::from(""),
+        )];
         let article = BitwardenJson{folders, items};
         println!("{:?}", serde_json::to_string_pretty(&article));
     }
